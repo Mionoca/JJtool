@@ -1,0 +1,57 @@
+/* Pet idle floating animation */
+@keyframes pet-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Pet breathing effect */
+@keyframes pet-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* Pet bounce on click */
+@keyframes pet-bounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.9); }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Chat bubble appear */
+@keyframes bubble-appear {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Typing dots */
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+
+.animate-pet-idle {
+  animation: pet-idle 3s ease-in-out infinite;
+}
+
+.animate-pet-breathe {
+  animation: pet-breathe 4s ease-in-out infinite;
+}
+
+.animate-pet-bounce {
+  animation: pet-bounce 0.4s ease-out;
+}
+
+.animate-bubble-appear {
+  animation: bubble-appear 0.3s ease-out;
+}
+
+.typing-dot:nth-child(1) { animation: typing-dot 1.4s ease-in-out infinite 0s; }
+.typing-dot:nth-child(2) { animation: typing-dot 1.4s ease-in-out infinite 0.2s; }
+.typing-dot:nth-child(3) { animation: typing-dot 1.4s ease-in-out infinite 0.4s; }

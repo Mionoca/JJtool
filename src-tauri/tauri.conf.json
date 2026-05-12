@@ -1,0 +1,81 @@
+{
+  "productName": "JJtool",
+  "version": "0.1.0",
+  "identifier": "com.jjtool.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "JJtool",
+        "width": 160,
+        "height": 200,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "x": 1200,
+        "y": 600
+      },
+      {
+        "label": "clipboard",
+        "title": "Clipboard History",
+        "width": 400,
+        "height": 560,
+        "transparent": true,
+        "decorations": false,
+        "visible": false,
+        "resizable": false,
+        "skipTaskbar": true,
+        "x": 800,
+        "y": 200
+      },
+      {
+        "label": "sticky",
+        "title": "便签 - JJtool",
+        "width": 320,
+        "height": 560,
+        "transparent": true,
+        "decorations": false,
+        "visible": false,
+        "resizable": false,
+        "skipTaskbar": true,
+        "x": 1400,
+        "y": 200
+      },
+      {
+        "label": "settings",
+        "title": "Settings - JJtool",
+        "width": 600,
+        "height": 480,
+        "visible": false,
+        "resizable": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
+  }
+}
