@@ -27,12 +27,16 @@ pub fn insert_clipboard_item(
     db: State<'_, Arc<Database>>,
     content: String,
     content_type: Option<String>,
+    preview: Option<String>,
+    mime_type: Option<String>,
     image_data: Option<String>,
     source_app: Option<String>,
 ) -> Result<ClipboardItem, String> {
     let item = CreateClipboardItem {
         content,
         content_type: content_type.unwrap_or_else(|| "text".to_string()),
+        preview,
+        mime_type,
         image_data,
         source_app,
     };

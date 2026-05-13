@@ -6,6 +6,10 @@ pub struct ClipboardItem {
     pub content: String,
     pub content_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub preview: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub image_data: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_app: Option<String>,
@@ -20,6 +24,8 @@ pub struct ClipboardItem {
 pub struct CreateClipboardItem {
     pub content: String,
     pub content_type: String,
+    pub preview: Option<String>,
+    pub mime_type: Option<String>,
     pub image_data: Option<String>,
     pub source_app: Option<String>,
 }

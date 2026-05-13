@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { getCurrentWindow, PhysicalPosition, PhysicalSize } from "@tauri-apps/api/window";
+import {
+  currentMonitor,
+  getCurrentWindow,
+  PhysicalPosition,
+  PhysicalSize,
+  type Monitor,
+} from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import PetCharacter from "./PetCharacter";
@@ -12,8 +18,27 @@ import { useReminderStore } from "@/stores/reminderStore";
 import type { Reminder } from "@/types/reminder";
 
 const PET_WINDOW_SIZE = { width: 160, height: 200 };
-const MENU_WINDOW_SIZE = { width: 320, height: 360 };
+const MENU_WINDOW_SIZE = { width: 430, height: 520 };
 const DRAG_THRESHOLD_PX = 8;
+
+function clampWindowPosition(
+  position: PhysicalPosition,
+  size: typeof PET_WINDOW_SIZE,
+  monitor: Monitor | null
+) {
+  if (!monitor) return position;
+
+  const workArea = monitor.workArea;
+  const minX = workArea.position.x;
+  const minY = workArea.position.y;
+  const maxX = workArea.position.x + workArea.size.width - size.width;
+  const maxY = workArea.position.y + workArea.size.height - size.height;
+
+  return new PhysicalPosition(
+    Math.min(Math.max(position.x, minX), Math.max(minX, maxX)),
+    Math.min(Math.max(position.y, minY), Math.max(minY, maxY))
+  );
+}
 
 export default function PetWindow() {
   const { mood, message, showMenu, setShowMenu, setMessage, setMood } =
@@ -57,7 +82,17 @@ export default function PetWindow() {
 
   const setPetWindowSize = async (size: typeof PET_WINDOW_SIZE) => {
     try {
-      await getCurrentWindow().setSize(new PhysicalSize(size.width, size.height));
+      const win = getCurrentWindow();
+      const [position, monitor] = await Promise.all([
+        win.outerPosition().catch(() => null),
+        currentMonitor().catch(() => null),
+      ]);
+
+      await win.setSize(new PhysicalSize(size.width, size.height));
+
+      if (position) {
+        await win.setPosition(clampWindowPosition(position, size, monitor));
+      }
     } catch {
       // keep current size if the platform denies resize
     }
@@ -154,7 +189,7 @@ export default function PetWindow() {
 
   const handleMenuAction = (action: string) => {
     closeMenu();
-    if (action === "reminder") {
+    if (action === "add-reminder" || action === "reminder") {
       setShowReminderInput(true);
       setMessage("");
     }
@@ -199,7 +234,7 @@ export default function PetWindow() {
 
       {showMenu && (
         <div
-          className="absolute left-[150px] top-2 z-20"
+          className="absolute left-[160px] top-3 z-50"
           onClick={(e) => e.stopPropagation()}
         >
           <PetMenu onClose={closeMenu} onAction={handleMenuAction} />

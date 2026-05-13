@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test:pet": "node --test tests/pet-window-interaction.test.mjs",
+    "test:features": "node --test tests/feature-regressions.test.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },

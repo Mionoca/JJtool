@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
-import type { StudyPlan } from "@/types/study";
+import type { AddStudyTaskInput, StudyPlan } from "@/types/study";
 
 interface StudyStore {
   plans: StudyPlan[];
@@ -12,7 +12,7 @@ interface StudyStore {
   setSelectedDate: (date: string) => void;
   fetchPlans: (date?: string) => Promise<void>;
   createPlan: (title: string, description: string | null, planDate: string, planType?: string) => Promise<void>;
-  addTask: (planId: number, title: string, durationMin?: number) => Promise<void>;
+  addTask: (planId: number, task: AddStudyTaskInput) => Promise<void>;
   toggleTask: (taskId: number) => Promise<void>;
   deleteTask: (taskId: number) => Promise<void>;
   deletePlan: (planId: number) => Promise<void>;
@@ -53,11 +53,17 @@ export const useStudyStore = create<StudyStore>((set, get) => ({
     await get().fetchPlans();
   },
 
-  addTask: async (planId, title, durationMin) => {
+  addTask: async (planId, task) => {
     await invoke("add_study_task", {
       planId,
-      title,
-      durationMin: durationMin || null,
+      title: task.title,
+      notes: task.notes || null,
+      durationMin: task.duration_min || null,
+      reminderAt: task.reminder_at || null,
+      reminderEnabled: task.reminder_enabled || false,
+      isRecurring: task.is_recurring || false,
+      recurrence: task.recurrence || null,
+      priority: task.priority || 1,
     });
     await get().fetchPlans();
   },

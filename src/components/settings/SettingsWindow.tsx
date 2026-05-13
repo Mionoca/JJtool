@@ -19,7 +19,7 @@ export default function SettingsWindow() {
   };
 
   const handleClose = () => {
-    getCurrentWindow().hide();
+    void getCurrentWindow().hide();
   };
 
   if (loading) {
@@ -32,24 +32,20 @@ export default function SettingsWindow() {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col">
-      {/* Title bar */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 drag-region">
-        <h1 className="text-lg font-semibold text-fluent-text">⚙️ 设置</h1>
+        <h1 className="text-lg font-semibold text-fluent-text">设置</h1>
         <button
           onClick={handleClose}
           className="w-8 h-8 flex items-center justify-center text-fluent-muted hover:text-fluent-text hover:bg-gray-200 rounded transition-colors no-drag"
+          title="关闭"
         >
-          ✕
+          x
         </button>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* General section */}
         <section>
-          <h2 className="text-sm font-semibold text-fluent-text mb-3">
-            通用设置
-          </h2>
+          <h2 className="text-sm font-semibold text-fluent-text mb-3">通用设置</h2>
           <div className="space-y-3">
             <SettingRow
               label="开机自启"
@@ -57,14 +53,12 @@ export default function SettingsWindow() {
             >
               <ToggleSwitch
                 checked={settings.auto_start === "true"}
-                onChange={(v) =>
-                  updateSetting("auto_start", v ? "true" : "false")
-                }
+                onChange={(v) => updateSetting("auto_start", v ? "true" : "false")}
               />
             </SettingRow>
             <SettingRow
-              label="快捷键"
-              description="打开剪贴板面板的快捷键"
+              label="剪贴板快捷键"
+              description="打开剪贴板历史窗口的全局快捷键"
             >
               <span className="text-sm text-fluent-muted px-2 py-1 bg-gray-100 rounded font-mono">
                 {settings.clipboard_hotkey || "Ctrl+Shift+V"}
@@ -73,30 +67,40 @@ export default function SettingsWindow() {
           </div>
         </section>
 
-        {/* Character section */}
         <section>
-          <h2 className="text-sm font-semibold text-fluent-text mb-3">
-            桌宠形象
-          </h2>
+          <h2 className="text-sm font-semibold text-fluent-text mb-3">资讯兴趣关键词</h2>
+          <div className="bg-white rounded-fluent p-4 border border-gray-100">
+            <label className="block text-sm text-fluent-text">
+              设置兴趣关键词
+              <textarea
+                value={settings.news_keywords || "人工智能, OpenAI, 编程, 深度学习"}
+                onChange={(e) => updateSetting("news_keywords", e.target.value)}
+                rows={3}
+                className="mt-2 w-full resize-none rounded-fluent border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-fluent-text focus:outline-none focus:ring-2 focus:ring-primary-300/50"
+              />
+            </label>
+            <p className="text-xs text-fluent-muted mt-2">
+              多个关键词用逗号分隔，刷新资讯时会优先匹配这些方向。
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="text-sm font-semibold text-fluent-text mb-3">桌宠形象</h2>
           <div className="bg-white rounded-fluent p-4 border border-gray-100">
             <CharacterPicker />
           </div>
         </section>
 
-        {/* Health section */}
         <section>
-          <h2 className="text-sm font-semibold text-fluent-text mb-3">
-            健康提醒
-          </h2>
+          <h2 className="text-sm font-semibold text-fluent-text mb-3">健康提醒</h2>
           <SettingRow
             label="提醒间隔"
-            description="连续工作多久后提醒休息（分钟）"
+            description="连续工作多久后提醒休息，单位为分钟"
           >
             <select
               value={settings.health_interval_min || "40"}
-              onChange={(e) =>
-                updateSetting("health_interval_min", e.target.value)
-              }
+              onChange={(e) => updateSetting("health_interval_min", e.target.value)}
               className="text-sm px-3 py-1.5 rounded-fluent border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-300/50"
             >
               <option value="20">20 分钟</option>
@@ -108,30 +112,27 @@ export default function SettingsWindow() {
           </SettingRow>
         </section>
 
-        {/* Data section */}
         <section>
-          <h2 className="text-sm font-semibold text-fluent-text mb-3">
-            数据管理
-          </h2>
+          <h2 className="text-sm font-semibold text-fluent-text mb-3">数据管理</h2>
           <div className="bg-white rounded-fluent p-4 border border-gray-100">
             <p className="text-sm text-fluent-muted">
-              数据存储位置: <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">%APPDATA%/JJtool/jjtool.db</code>
+              数据存储位置：
+              <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">
+                %APPDATA%/JJtool/jjtool.db
+              </code>
             </p>
             <p className="text-xs text-fluent-muted mt-2">
-              剪贴板记录保留 3 天后自动清除。收藏的记录不会被清除。
+              剪贴板记录默认保留 3 天，收藏记录不会被自动清理。
             </p>
           </div>
         </section>
 
-        {/* About */}
         <section>
-          <h2 className="text-sm font-semibold text-fluent-text mb-3">
-            关于
-          </h2>
+          <h2 className="text-sm font-semibold text-fluent-text mb-3">关于</h2>
           <div className="bg-white rounded-fluent p-4 border border-gray-100">
             <p className="text-sm text-fluent-text font-medium">JJtool v0.1.0</p>
             <p className="text-xs text-fluent-muted mt-1">
-              Windows AI 桌面助手 · 剪贴板管理 · 智能提醒
+              Windows AI 桌面助手，包含桌宠、剪贴板管理、智能提醒和资讯推送。
             </p>
           </div>
         </section>
@@ -150,7 +151,7 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between bg-white rounded-fluent px-4 py-3 border border-gray-100">
+    <div className="flex items-center justify-between gap-4 bg-white rounded-fluent px-4 py-3 border border-gray-100">
       <div>
         <p className="text-sm text-fluent-text">{label}</p>
         <p className="text-xs text-fluent-muted mt-0.5">{description}</p>
@@ -174,6 +175,7 @@ function ToggleSwitch({
         relative w-10 h-5 rounded-full transition-colors duration-200
         ${checked ? "bg-primary-500" : "bg-gray-300"}
       `}
+      title={checked ? "已开启" : "已关闭"}
     >
       <div
         className={`

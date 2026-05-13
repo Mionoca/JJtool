@@ -67,8 +67,9 @@ test("large pet panels use dedicated windows instead of the 160x200 pet window",
   assert.ok(studyWindow.height >= 520);
   assert.match(appSource, /case "news":/);
   assert.match(appSource, /case "study":/);
-  assert.match(menuSource, /toggleWindow\("news"\)/);
-  assert.match(menuSource, /toggleWindow\("study"\)/);
+  assert.match(menuSource, /windowLabel: "news"/);
+  assert.match(menuSource, /windowLabel: "study"/);
+  assert.match(menuSource, /openWindow\(item\.windowLabel\)/);
   assert.equal(source.includes("<NewsPanel />"), false);
   assert.equal(source.includes("<StudyPanel />"), false);
   assert.equal(source.includes("PANEL_WINDOW_SIZE"), false);

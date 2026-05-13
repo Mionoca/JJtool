@@ -17,7 +17,14 @@ pub struct StudyTask {
     pub id: i64,
     pub plan_id: i64,
     pub title: String,
+    pub notes: Option<String>,
     pub duration_min: Option<i32>,
+    pub reminder_at: Option<String>,
+    pub reminder_enabled: bool,
+    pub is_recurring: bool,
+    pub recurrence: Option<String>,
+    pub priority: i32,
+    pub reminder_id: Option<i64>,
     pub is_done: bool,
     pub sort_order: i32,
 }
@@ -34,5 +41,11 @@ pub struct CreateStudyPlan {
 pub struct CreateStudyTask {
     pub plan_id: i64,
     pub title: String,
+    pub notes: Option<String>,
     pub duration_min: Option<i32>,
+    pub reminder_at: Option<String>,
+    pub reminder_enabled: bool,
+    pub is_recurring: bool,
+    pub recurrence: Option<String>,
+    pub priority: i32,
 }

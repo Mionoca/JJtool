@@ -2,6 +2,8 @@ export interface ClipboardItem {
   id: number;
   content: string;
   content_type: "text" | "image" | "file" | "code";
+  preview?: string;
+  mime_type?: string;
   image_data?: string;
   source_app?: string;
   is_favorite: boolean;

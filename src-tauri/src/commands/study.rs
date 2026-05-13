@@ -30,12 +30,24 @@ pub fn add_study_task(
     db: State<'_, Arc<Database>>,
     plan_id: i64,
     title: String,
+    notes: Option<String>,
     duration_min: Option<i32>,
+    reminder_at: Option<String>,
+    reminder_enabled: Option<bool>,
+    is_recurring: Option<bool>,
+    recurrence: Option<String>,
+    priority: Option<i32>,
 ) -> Result<StudyTask, String> {
     let task = CreateStudyTask {
         plan_id,
         title,
+        notes,
         duration_min,
+        reminder_at,
+        reminder_enabled: reminder_enabled.unwrap_or(false),
+        is_recurring: is_recurring.unwrap_or(false),
+        recurrence,
+        priority: priority.unwrap_or(1),
     };
     db.add_study_task(&task)
 }
