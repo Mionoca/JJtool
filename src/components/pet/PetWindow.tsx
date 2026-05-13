@@ -22,10 +22,9 @@ export default function PetWindow() {
   const [showNews, setShowNews] = useState(false);
   const [showStudy, setShowStudy] = useState(false);
   const isDragging = useRef(false);
-  const dragStartScreen = useRef({ x: 0, y: 0 });
-  const windowStartPos = useRef({ x: 0, y: 0 });
+  const mouseDownTime = useRef(0);
+  const mouseDownPos = useRef({ x: 0, y: 0 });
 
-  // Make window click-through by default, only capture on pet hover
   const setClickThrough = useCallback(async (ignore: boolean) => {
     try {
       await getCurrentWindow().setIgnoreCursorEvents(ignore);
@@ -37,14 +36,13 @@ export default function PetWindow() {
   useEffect(() => {
     document.body.classList.add("pet-window");
 
-    // Make window click-through on mount
+    // Start click-through so transparent areas pass clicks to desktop
     setClickThrough(true);
 
-    // Ensure window is positioned correctly (fix for transparent windows)
+    // Fix positioning: transparent frameless windows may start at (0,0)
     getCurrentWindow()
       .outerPosition()
       .then((pos) => {
-        // If at (0,0), move to configured position
         if (pos.x === 0 && pos.y === 0) {
           getCurrentWindow().setPosition(new PhysicalPosition(1200, 600));
         }
@@ -60,7 +58,7 @@ export default function PetWindow() {
       }
     );
 
-    // Listen for reminder triggers from Rust backend
+    // Listen for reminder triggers
     const unlisten = listen<Reminder>("reminder-triggered", (event) => {
       setActiveReminder(event.payload);
       setMood("happy" as any);
@@ -82,65 +80,61 @@ export default function PetWindow() {
     };
   }, []);
 
-  const handlePetMouseEnter = () => {
-    // When hovering over pet, capture clicks so we can interact
-    setClickThrough(false);
-  };
+  // CRITICAL: Use document-level mouseenter/mouseleave.
+  // These fire at the OS level even when setIgnoreCursorEvents(true).
+  // When mouse enters the window bounds, disable click-through so pet is interactive.
+  useEffect(() => {
+    const handleMouseEnter = () => {
+      setClickThrough(false);
+    };
 
-  const handlePetMouseLeave = () => {
-    // When leaving pet area, make click-through again
-    if (!isDragging.current) {
-      setClickThrough(true);
-    }
-  };
-
-  const handleMouseDown = async (e: React.MouseEvent) => {
-    if (e.button === 0) {
-      isDragging.current = false;
-      dragStartScreen.current = { x: e.screenX, y: e.screenY };
-
-      try {
-        const pos = await getCurrentWindow().outerPosition();
-        windowStartPos.current = { x: pos.x, y: pos.y };
-      } catch {
-        return;
+    const handleMouseLeave = () => {
+      if (!isDragging.current) {
+        setClickThrough(true);
       }
+    };
 
-      const handleMouseMove = (ev: MouseEvent) => {
-        const dx = Math.abs(ev.screenX - dragStartScreen.current.x);
-        const dy = Math.abs(ev.screenY - dragStartScreen.current.y);
-        if (dx > 3 || dy > 3) {
-          isDragging.current = true;
-        }
-        if (isDragging.current) {
-          const newX =
-            windowStartPos.current.x + (ev.screenX - dragStartScreen.current.x);
-          const newY =
-            windowStartPos.current.y + (ev.screenY - dragStartScreen.current.y);
-          getCurrentWindow()
-            .setPosition(new PhysicalPosition(newX, newY))
-            .catch(() => {});
-        }
-      };
+    document.addEventListener("mouseenter", handleMouseEnter);
+    document.addEventListener("mouseleave", handleMouseLeave);
 
-      const handleMouseUp = () => {
+    return () => {
+      document.removeEventListener("mouseenter", handleMouseEnter);
+      document.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, [setClickThrough]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+
+    isDragging.current = false;
+    mouseDownTime.current = Date.now();
+    mouseDownPos.current = { x: e.screenX, y: e.screenY };
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      const dx = Math.abs(ev.screenX - mouseDownPos.current.x);
+      const dy = Math.abs(ev.screenY - mouseDownPos.current.y);
+      if (dx > 3 || dy > 3) {
+        isDragging.current = true;
+        // Use Tauri's native drag - much more reliable than manual position tracking
+        getCurrentWindow().startDragging().catch(() => {});
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
-        if (!isDragging.current) {
-          // Re-enable click-through after a short delay
-          setTimeout(() => setClickThrough(true), 100);
-        }
-      };
+      }
+    };
 
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-    }
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
   };
 
   const handleClick = () => {
+    // Ignore click if we just finished dragging
     if (isDragging.current) {
       isDragging.current = false;
-      setClickThrough(true);
       return;
     }
 
@@ -233,11 +227,9 @@ export default function PetWindow() {
         </div>
       )}
 
-      {/* Pet character - only this area captures mouse events */}
+      {/* Pet character - document-level mouseenter/mouseleave handles click-through toggle */}
       <div
         className="cursor-pointer"
-        onMouseEnter={handlePetMouseEnter}
-        onMouseLeave={handlePetMouseLeave}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
