@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { writeImage, writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import type { ClipboardItem as ClipItemType } from "@/types/clipboard";
 
@@ -34,6 +34,7 @@ function fileName(path: string) {
 export default function ClipboardItemComponent({ item }: Props) {
   const { deleteItem, toggleFavorite } = useClipboardStore();
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
 
   const filePaths = useMemo(
@@ -44,25 +45,27 @@ export default function ClipboardItemComponent({ item }: Props) {
   const imagePath = item.preview || item.image_data || item.content;
   const imageSrc = item.content_type === "image" && imagePath ? convertFileSrc(imagePath) : "";
 
-  const handleCopy = async () => {
+  const handleCopyOriginal = async () => {
     try {
-      if (item.content_type === "image") {
-        try {
-          await writeImage(item.content);
-        } catch {
-          await writeText(item.content);
-        }
-      } else if (item.content_type === "file") {
-        await writeText(filePaths.length > 0 ? filePaths.join("\n") : item.content);
-      } else {
-        await writeText(item.content);
-      }
-
+      setCopyError(null);
+      await invoke("restore_clipboard_item", { id: item.id });
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
-      console.error("Copy failed:", e);
+      const message = e instanceof Error ? e.message : String(e);
+      setCopyError(message);
+      console.error("Copy original clipboard data failed:", e);
     }
+  };
+
+  const handleCopyPathText = async () => {
+    const text =
+      item.content_type === "file" && filePaths.length > 0
+        ? filePaths.join("\n")
+        : item.content;
+    await writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
 
   const formatTime = (dateStr: string) => {
@@ -96,8 +99,9 @@ export default function ClipboardItemComponent({ item }: Props) {
       onClick={() => {
         if (item.content_type === "image") {
           setShowImagePreview(true);
+          void handleCopyOriginal();
         } else {
-          void handleCopy();
+          void handleCopyOriginal();
         }
       }}
     >
@@ -127,6 +131,7 @@ export default function ClipboardItemComponent({ item }: Props) {
             className="max-h-28 w-full rounded-lg object-contain bg-white/70 border border-white/40"
           />
           <p className="text-xs text-fluent-muted break-all">{item.content}</p>
+          <p className="text-[11px] text-primary-500">点击默认复制图片本身</p>
         </div>
       ) : item.content_type === "file" ? (
         <div className="space-y-1">
@@ -140,6 +145,7 @@ export default function ClipboardItemComponent({ item }: Props) {
           {filePaths.length > 3 && (
             <p className="text-xs text-fluent-muted">还有 {filePaths.length - 3} 个文件</p>
           )}
+          <p className="text-[11px] text-primary-500">点击默认复制文件本身</p>
         </div>
       ) : (
         <p
@@ -151,6 +157,12 @@ export default function ClipboardItemComponent({ item }: Props) {
         >
           {previewText}
         </p>
+      )}
+
+      {copyError && (
+        <div className="mt-2 text-xs text-red-500 break-words">
+          恢复原剪贴板内容失败：{copyError}
+        </div>
       )}
 
       {item.tags.length > 0 && (
@@ -170,13 +182,31 @@ export default function ClipboardItemComponent({ item }: Props) {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            void handleCopy();
+            void handleCopyOriginal();
           }}
           className="w-6 h-6 flex items-center justify-center text-xs rounded hover:bg-gray-200/80 transition-colors"
-          title="复制"
+          title={
+            item.content_type === "image"
+              ? "复制图片本身"
+              : item.content_type === "file"
+                ? "复制文件本身"
+                : "复制文本"
+          }
         >
           ⧉
         </button>
+        {(item.content_type === "image" || item.content_type === "file") && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleCopyPathText();
+            }}
+            className="w-6 h-6 flex items-center justify-center text-xs rounded hover:bg-gray-200/80 transition-colors"
+            title="复制路径文本"
+          >
+            路
+          </button>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -201,7 +231,7 @@ export default function ClipboardItemComponent({ item }: Props) {
 
       {copied && (
         <div className="absolute inset-0 flex items-center justify-center bg-green-50/90 rounded-fluent animate-fade-in">
-          <span className="text-sm text-green-600 font-medium">已复制</span>
+          <span className="text-sm text-green-600 font-medium">已复制原内容</span>
         </div>
       )}
 

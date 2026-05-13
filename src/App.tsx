@@ -6,6 +6,7 @@ import StickySidebar from "@/components/sticky/StickySidebar";
 import SettingsWindow from "@/components/settings/SettingsWindow";
 import NewsPanel from "@/components/news/NewsPanel";
 import StudyPanel from "@/components/study/StudyPanel";
+import PetContextMenu from "@/components/pet/PetContextMenu";
 
 function App() {
   const [windowLabel, setWindowLabel] = useState<string>("");
@@ -22,6 +23,8 @@ function App() {
 
   // Route to correct component based on window label
   switch (windowLabel) {
+    case "pet-menu":
+      return <PetContextMenu />;
     case "clipboard":
       return <ClipboardPanel />;
     case "sticky":

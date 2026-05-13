@@ -24,6 +24,35 @@ body.pet-window #root {
   background: transparent !important;
 }
 
+body.pet-menu-window {
+  background: transparent !important;
+}
+
+body.pet-menu-window #root {
+  background: transparent !important;
+}
+
+.pet-context-menu {
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.pet-context-menu-item {
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: unset;
+  cursor: pointer;
+}
+
 /* Glass effect utility */
 @layer utilities {
   .glass {

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useStickyStore } from "@/stores/stickyStore";
+import { useWindowSizePersistence } from "@/hooks/useWindowSizePersistence";
 import StickyNoteCard from "./StickyNote";
 
 const COLORS = [
@@ -20,9 +22,17 @@ export default function StickySidebar() {
   const [newContent, setNewContent] = useState("");
   const [newColor, setNewColor] = useState(COLORS[0].value);
 
+  useWindowSizePersistence("sticky", { width: 320, height: 560 });
+
   useEffect(() => {
-    fetchNotes();
-  }, []);
+    void fetchNotes();
+    const unlisten = listen("sticky-open-add-note", () => {
+      setShowNew(true);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [fetchNotes]);
 
   const handleCreate = async () => {
     if (!newContent.trim()) return;
@@ -43,7 +53,6 @@ export default function StickySidebar() {
 
   return (
     <div className="h-full flex flex-col glass shadow-fluent overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-fluent-border/30 drag-region">
         <h2 className="text-sm font-semibold text-fluent-text flex items-center gap-2">
           <span>📝</span> 便签
@@ -59,13 +68,13 @@ export default function StickySidebar() {
           <button
             onClick={handleClose}
             className="w-7 h-7 flex items-center justify-center text-fluent-muted hover:text-fluent-text hover:bg-gray-100 rounded transition-colors"
+            title="关闭"
           >
-            ✕
+            x
           </button>
         </div>
       </div>
 
-      {/* New note form */}
       {showNew && (
         <div className="px-3 py-2 border-b border-fluent-border/30 animate-bubble-appear">
           <input
@@ -111,7 +120,6 @@ export default function StickySidebar() {
         </div>
       )}
 
-      {/* Notes list */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
         {loading && notes.length === 0 ? (
           <div className="flex items-center justify-center h-20 text-fluent-muted text-sm">
@@ -127,7 +135,6 @@ export default function StickySidebar() {
         )}
       </div>
 
-      {/* Footer */}
       <div className="px-4 py-2 border-t border-fluent-border/30 text-xs text-fluent-muted text-center">
         {notes.length} 条便签
       </div>

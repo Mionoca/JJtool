@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { emitTo } from "@tauri-apps/api/event";
 
 interface Props {
   onClose: () => void;
-  onAction?: (action: string) => void;
 }
 
 type MenuItem = {
@@ -11,60 +11,81 @@ type MenuItem = {
   icon: string;
   label: string;
   windowLabel?: string;
+  event?: string;
 };
 
 const menuItems: MenuItem[] = [
-  { id: "add-study", icon: "📚", label: "添加学习计划", windowLabel: "study" },
-  { id: "add-reminder", icon: "⏰", label: "添加提醒事项" },
-  { id: "add-sticky", icon: "📝", label: "添加便签", windowLabel: "sticky" },
-  { id: "clipboard", icon: "📋", label: "查看剪贴板历史", windowLabel: "clipboard" },
-  { id: "today-plan", icon: "✅", label: "查看今日计划", windowLabel: "study" },
+  {
+    id: "add-plan-reminder",
+    icon: "📚",
+    label: "添加计划 / 提醒",
+    windowLabel: "study",
+    event: "study-open-add-task",
+  },
+  {
+    id: "view-plan-reminder",
+    icon: "✅",
+    label: "查看计划与提醒",
+    windowLabel: "study",
+  },
+  {
+    id: "add-sticky",
+    icon: "📝",
+    label: "添加便签",
+    windowLabel: "sticky",
+    event: "sticky-open-add-note",
+  },
   { id: "sticky", icon: "🗒️", label: "打开便签栏", windowLabel: "sticky" },
-  { id: "refresh-news", icon: "📰", label: "刷新资讯", windowLabel: "news" },
-  { id: "interests", icon: "🎯", label: "设置兴趣关键词", windowLabel: "settings" },
+  { id: "clipboard", icon: "📋", label: "查看剪贴板历史", windowLabel: "clipboard" },
+  {
+    id: "refresh-news",
+    icon: "📰",
+    label: "刷新资讯",
+    windowLabel: "news",
+    event: "news-refresh",
+  },
+  {
+    id: "interests",
+    icon: "🎯",
+    label: "设置兴趣关键词",
+    windowLabel: "settings",
+    event: "settings-focus-interests",
+  },
   { id: "settings", icon: "⚙️", label: "打开设置", windowLabel: "settings" },
   { id: "quit", icon: "⏻", label: "退出程序" },
 ];
 
-export default function PetMenu({ onClose, onAction }: Props) {
+export default function PetMenu({ onClose }: Props) {
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
-  const openWindow = async (label: string) => {
-    try {
-      const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-      const existing = await WebviewWindow.getByLabel(label);
-      if (!existing) return;
+  const openWindow = async (label: string, event?: string) => {
+    const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+    const existing = await WebviewWindow.getByLabel(label);
+    if (!existing) return;
 
-      await existing.show();
-      await existing.setFocus();
-    } catch (e) {
-      console.error(`Failed to open ${label} window:`, e);
+    await existing.show();
+    await existing.setFocus();
+
+    if (event) {
+      await emitTo(label, event, { source: "pet-menu" });
     }
   };
 
   const handleAction = async (item: MenuItem) => {
     if (busyAction !== null) return;
     setBusyAction(item.id);
-
-    onAction?.(item.id);
     onClose();
 
     try {
-      if (item.id === "refresh-news") {
-        void import("@tauri-apps/api/core").then(({ invoke }) =>
-          invoke("refresh_news").catch((e) => {
-            console.error("Failed to refresh news:", e);
-          })
-        );
-      }
-
       if (item.windowLabel) {
-        await openWindow(item.windowLabel);
+        await openWindow(item.windowLabel, item.event);
       }
 
       if (item.id === "quit") {
-        await getCurrentWindow().close();
+        await invoke("quit_app");
       }
+    } catch (e) {
+      console.error(`Pet menu action failed: ${item.id}`, e);
     } finally {
       setBusyAction(null);
     }
@@ -72,7 +93,7 @@ export default function PetMenu({ onClose, onAction }: Props) {
 
   return (
     <div
-      className="glass rounded-fluent shadow-fluent py-2 min-w-[240px] max-w-[280px] max-h-[460px] overflow-y-auto animate-fade-in z-50"
+      className="py-1 min-w-[240px] max-h-[calc(100vh-32px)] overflow-y-auto"
       onClick={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -80,7 +101,7 @@ export default function PetMenu({ onClose, onAction }: Props) {
         <button
           key={item.id}
           disabled={busyAction !== null}
-          className="w-full px-3 py-2.5 text-left text-sm text-fluent-text hover:bg-primary-50 active:bg-primary-100 disabled:opacity-60 disabled:cursor-wait flex items-center gap-3 transition-colors"
+          className="pet-context-menu-item flex items-center gap-3 text-left text-sm text-fluent-text hover:bg-primary-50 active:bg-primary-100 disabled:opacity-60 disabled:cursor-wait transition-colors"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -89,9 +110,7 @@ export default function PetMenu({ onClose, onAction }: Props) {
           title={item.label}
         >
           <span className="w-5 flex-shrink-0 text-base text-center">{item.icon}</span>
-          <span className="min-w-0 whitespace-normal break-words leading-snug">
-            {item.label}
-          </span>
+          <span className="whitespace-nowrap leading-snug">{item.label}</span>
         </button>
       ))}
     </div>

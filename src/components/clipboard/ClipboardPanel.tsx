@@ -2,12 +2,14 @@ import { useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useClipboardStore } from "@/stores/clipboardStore";
 import { useClipboardListener } from "@/hooks/useClipboard";
+import { useWindowSizePersistence } from "@/hooks/useWindowSizePersistence";
 import ClipboardSearch from "./ClipboardSearch";
 import ClipboardItemComponent from "./ClipboardItem";
 
 export default function ClipboardPanel() {
   const { items, loading, fetchItems, clearAll } = useClipboardStore();
 
+  useWindowSizePersistence("clipboard", { width: 400, height: 560 });
   useClipboardListener();
 
   useEffect(() => {

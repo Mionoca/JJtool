@@ -37,3 +37,9 @@ pub fn get_pet_greeting() -> Result<PetState, String> {
         message: message.to_string(),
     })
 }
+
+#[tauri::command]
+pub fn quit_app(app: tauri::AppHandle) -> Result<(), String> {
+    app.exit(0);
+    Ok(())
+}

@@ -15,6 +15,7 @@ impl Default for UserSettings {
         settings.insert("pet_position_y".to_string(), "600".to_string());
         settings.insert("clipboard_hotkey".to_string(), "Ctrl+Shift+V".to_string());
         settings.insert("health_interval_min".to_string(), "40".to_string());
+        settings.insert("news_keywords".to_string(), "".to_string());
         settings.insert(
             "interests".to_string(),
             r#"["人工智能","深度学习","编程","科技"]"#.to_string(),

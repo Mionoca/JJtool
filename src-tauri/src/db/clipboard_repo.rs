@@ -21,6 +21,36 @@ fn remove_clipboard_assets(content_type: &str, content: &str, preview: Option<&s
 }
 
 impl Database {
+    pub fn get_clipboard_item(&self, id: i64) -> Result<ClipboardItem, String> {
+        self.with_conn(|conn| {
+            conn.query_row(
+                "SELECT id, content, content_type, preview, mime_type, image_data, source_app,
+                 is_favorite, is_pinned, tags, created_at, expires_at
+                 FROM clipboard_history WHERE id = ?1",
+                params![id],
+                |row| {
+                    let tags_str: String = row.get(9)?;
+                    let tags: Vec<String> = serde_json::from_str(&tags_str).unwrap_or_default();
+                    Ok(ClipboardItem {
+                        id: row.get(0)?,
+                        content: row.get(1)?,
+                        content_type: row.get(2)?,
+                        preview: row.get(3)?,
+                        mime_type: row.get(4)?,
+                        image_data: row.get(5)?,
+                        source_app: row.get(6)?,
+                        is_favorite: row.get::<_, i32>(7)? != 0,
+                        is_pinned: row.get::<_, i32>(8)? != 0,
+                        tags,
+                        created_at: row.get(10)?,
+                        expires_at: row.get(11)?,
+                    })
+                },
+            )
+            .map_err(|e| e.to_string())
+        })
+    }
+
     pub fn insert_clipboard(&self, item: &CreateClipboardItem) -> Result<ClipboardItem, String> {
         self.with_conn(|conn| {
             let now = chrono::Local::now();

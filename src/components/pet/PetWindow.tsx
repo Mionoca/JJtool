@@ -2,15 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   currentMonitor,
   getCurrentWindow,
+  monitorFromPoint,
   PhysicalPosition,
   PhysicalSize,
   type Monitor,
 } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import PetCharacter from "./PetCharacter";
 import ChatBubble from "./ChatBubble";
-import PetMenu from "./PetMenu";
 import { usePetStore } from "@/stores/petStore";
 import ReminderInput from "@/components/reminder/ReminderInput";
 import ReminderPopup from "@/components/reminder/ReminderPopup";
@@ -18,21 +18,22 @@ import { useReminderStore } from "@/stores/reminderStore";
 import type { Reminder } from "@/types/reminder";
 
 const PET_WINDOW_SIZE = { width: 160, height: 200 };
-const MENU_WINDOW_SIZE = { width: 430, height: 520 };
+const PET_CONTEXT_MENU_SIZE = { width: 320, height: 432 };
 const DRAG_THRESHOLD_PX = 8;
 
 function clampWindowPosition(
   position: PhysicalPosition,
-  size: typeof PET_WINDOW_SIZE,
+  size: { width: number; height: number },
   monitor: Monitor | null
 ) {
   if (!monitor) return position;
 
   const workArea = monitor.workArea;
-  const minX = workArea.position.x;
-  const minY = workArea.position.y;
-  const maxX = workArea.position.x + workArea.size.width - size.width;
-  const maxY = workArea.position.y + workArea.size.height - size.height;
+  const margin = 8;
+  const minX = workArea.position.x + margin;
+  const minY = workArea.position.y + margin;
+  const maxX = workArea.position.x + workArea.size.width - size.width - margin;
+  const maxY = workArea.position.y + workArea.size.height - size.height - margin;
 
   return new PhysicalPosition(
     Math.min(Math.max(position.x, minX), Math.max(minX, maxX)),
@@ -41,8 +42,7 @@ function clampWindowPosition(
 }
 
 export default function PetWindow() {
-  const { mood, message, showMenu, setShowMenu, setMessage, setMood } =
-    usePetStore();
+  const { mood, message, setShowMenu, setMessage, setMood } = usePetStore();
   const { activeReminder, setActiveReminder } = useReminderStore();
   const [bouncing, setBouncing] = useState(false);
   const [showReminderInput, setShowReminderInput] = useState(false);
@@ -51,6 +51,10 @@ export default function PetWindow() {
 
   useEffect(() => {
     document.body.classList.add("pet-window");
+
+    void getCurrentWindow().setSize(
+      new PhysicalSize(PET_WINDOW_SIZE.width, PET_WINDOW_SIZE.height)
+    );
 
     invoke<{ mood: string; message: string }>("get_pet_greeting").then(
       (result) => {
@@ -79,29 +83,6 @@ export default function PetWindow() {
       unlistenHealth.then((fn) => fn());
     };
   }, []);
-
-  const setPetWindowSize = async (size: typeof PET_WINDOW_SIZE) => {
-    try {
-      const win = getCurrentWindow();
-      const [position, monitor] = await Promise.all([
-        win.outerPosition().catch(() => null),
-        currentMonitor().catch(() => null),
-      ]);
-
-      await win.setSize(new PhysicalSize(size.width, size.height));
-
-      if (position) {
-        await win.setPosition(clampWindowPosition(position, size, monitor));
-      }
-    } catch {
-      // keep current size if the platform denies resize
-    }
-  };
-
-  const closeMenu = () => {
-    setShowMenu(false);
-    setPetWindowSize(PET_WINDOW_SIZE);
-  };
 
   const handleMouseDown = async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -174,33 +155,54 @@ export default function PetWindow() {
     }
   };
 
+  const openPetContextMenu = async (e: React.MouseEvent) => {
+    try {
+      const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+      const menuWindow = await WebviewWindow.getByLabel("pet-menu");
+      if (!menuWindow) return;
+
+      await menuWindow.setSize(
+        new PhysicalSize(PET_CONTEXT_MENU_SIZE.width, PET_CONTEXT_MENU_SIZE.height)
+      );
+
+      await menuWindow.setPosition(new PhysicalPosition(e.screenX, e.screenY));
+
+      const [pointMonitor, fallbackMonitor] = await Promise.all([
+        monitorFromPoint(e.screenX, e.screenY).catch(() => null),
+        currentMonitor().catch(() => null),
+      ]);
+      const clampedPosition = clampWindowPosition(
+        new PhysicalPosition(e.screenX, e.screenY),
+        PET_CONTEXT_MENU_SIZE,
+        pointMonitor || fallbackMonitor
+      );
+
+      await menuWindow.setPosition(clampedPosition);
+      await menuWindow.show();
+      await menuWindow.setFocus();
+      await emitTo("pet-menu", "pet-context-menu-opened", {
+        x: clampedPosition.x,
+        y: clampedPosition.y,
+      });
+    } catch (error) {
+      console.error("Failed to open pet context menu:", error);
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (showMenu) {
-      closeMenu();
-      return;
-    }
-
     setShowReminderInput(false);
-    setShowMenu(true);
-    setPetWindowSize(MENU_WINDOW_SIZE);
-  };
-
-  const handleMenuAction = (action: string) => {
-    closeMenu();
-    if (action === "add-reminder" || action === "reminder") {
-      setShowReminderInput(true);
-      setMessage("");
-    }
+    setShowMenu(false);
+    void openPetContextMenu(e);
   };
 
   return (
     <div
       className="relative select-none"
       style={{
-        width: showMenu ? MENU_WINDOW_SIZE.width : PET_WINDOW_SIZE.width,
-        height: showMenu ? MENU_WINDOW_SIZE.height : PET_WINDOW_SIZE.height,
+        width: PET_WINDOW_SIZE.width,
+        height: PET_WINDOW_SIZE.height,
       }}
     >
       {message && !showReminderInput && !activeReminder && (
@@ -231,15 +233,6 @@ export default function PetWindow() {
           <PetCharacter mood={mood} />
         </div>
       </div>
-
-      {showMenu && (
-        <div
-          className="absolute left-[160px] top-3 z-50"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <PetMenu onClose={closeMenu} onAction={handleMenuAction} />
-        </div>
-      )}
     </div>
   );
 }

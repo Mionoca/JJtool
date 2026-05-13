@@ -5,6 +5,8 @@ import type { NewsArticle } from "@/types/news";
 interface NewsStore {
   articles: NewsArticle[];
   loading: boolean;
+  error: string | null;
+  lastRefreshCount: number | null;
   showPanel: boolean;
 
   setShowPanel: (show: boolean) => void;
@@ -13,21 +15,26 @@ interface NewsStore {
   refresh: () => Promise<void>;
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export const useNewsStore = create<NewsStore>((set, get) => ({
   articles: [],
   loading: false,
+  error: null,
+  lastRefreshCount: null,
   showPanel: false,
 
   setShowPanel: (show) => set({ showPanel: show }),
 
   fetchArticles: async () => {
-    set({ loading: true });
+    set({ loading: true, error: null });
     try {
       const items = await invoke<NewsArticle[]>("get_news_articles", { limit: 50 });
-      set({ articles: items, loading: false });
+      set({ articles: items, loading: false, error: null });
     } catch (e) {
-      console.error("Failed to fetch news:", e);
-      set({ loading: false });
+      set({ loading: false, error: errorMessage(e) });
     }
   },
 
@@ -41,13 +48,18 @@ export const useNewsStore = create<NewsStore>((set, get) => ({
   },
 
   refresh: async () => {
-    set({ loading: true });
+    set({ loading: true, error: null, lastRefreshCount: null });
     try {
-      await invoke("refresh_news");
-      await get().fetchArticles();
+      const count = await invoke<number>("refresh_news");
+      const items = await invoke<NewsArticle[]>("get_news_articles", { limit: 50 });
+      set({
+        articles: items,
+        loading: false,
+        error: null,
+        lastRefreshCount: count,
+      });
     } catch (e) {
-      console.error("Failed to refresh news:", e);
-      set({ loading: false });
+      set({ loading: false, error: errorMessage(e), lastRefreshCount: null });
     }
   },
 }));

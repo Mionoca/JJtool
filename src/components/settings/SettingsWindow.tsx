@@ -1,16 +1,34 @@
 import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useWindowSizePersistence } from "@/hooks/useWindowSizePersistence";
 import CharacterPicker from "./CharacterPicker";
 
 export default function SettingsWindow() {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
+  useWindowSizePersistence("settings", { width: 600, height: 480 });
+
   useEffect(() => {
     invoke<Record<string, string>>("get_settings")
       .then(setSettings)
       .finally(() => setLoading(false));
+
+    const unlisten = listen("settings-focus-interests", () => {
+      document.getElementById("interest-keywords")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      window.setTimeout(() => {
+        document.getElementById("news-keywords-input")?.focus();
+      }, 200);
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, []);
 
   const updateSetting = async (key: string, value: string) => {
@@ -44,7 +62,7 @@ export default function SettingsWindow() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <section>
+        <section id="interest-keywords">
           <h2 className="text-sm font-semibold text-fluent-text mb-3">通用设置</h2>
           <div className="space-y-3">
             <SettingRow
@@ -73,8 +91,10 @@ export default function SettingsWindow() {
             <label className="block text-sm text-fluent-text">
               设置兴趣关键词
               <textarea
-                value={settings.news_keywords || "人工智能, OpenAI, 编程, 深度学习"}
+                id="news-keywords-input"
+                value={settings.news_keywords || ""}
                 onChange={(e) => updateSetting("news_keywords", e.target.value)}
+                placeholder="例如：人工智能, OpenAI, MATLAB, Windows 桌面开发"
                 rows={3}
                 className="mt-2 w-full resize-none rounded-fluent border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-fluent-text focus:outline-none focus:ring-2 focus:ring-primary-300/50"
               />

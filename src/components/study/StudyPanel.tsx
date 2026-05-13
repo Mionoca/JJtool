@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { useStudyStore } from "@/stores/studyStore";
+import { useWindowSizePersistence } from "@/hooks/useWindowSizePersistence";
 import TaskItem from "./TaskItem";
 import PomodoroTimer from "./PomodoroTimer";
 
@@ -31,9 +33,25 @@ export default function StudyPanel() {
   const [priority, setPriority] = useState(1);
   const [activePlanId, setActivePlanId] = useState<number | null>(null);
   const [showPomodoro, setShowPomodoro] = useState(false);
+  const plansRef = useRef(plans);
+
+  useEffect(() => {
+    plansRef.current = plans;
+  }, [plans]);
+
+  useWindowSizePersistence("study", { width: 360, height: 540 });
 
   useEffect(() => {
     void fetchPlans();
+    const unlisten = listen("study-open-add-task", () => {
+      const firstPlan = plansRef.current.find((plan) => plan.plan_date === selectedDate);
+      if (firstPlan) {
+        setActivePlanId(firstPlan.id);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, []);
 
   useEffect(() => {
@@ -83,7 +101,7 @@ export default function StudyPanel() {
   );
 
   return (
-    <div className="w-[360px] h-[540px] glass rounded-2xl shadow-xl flex flex-col overflow-hidden">
+    <div className="w-full h-full glass rounded-2xl shadow-xl flex flex-col overflow-hidden">
       <div className="px-4 py-3 border-b border-white/20 drag-region">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-fluent-text">学习计划</h2>
