@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
+import { useEffect, useState, useRef } from "react";
+import { getCurrentWindow, PhysicalPosition, PhysicalSize } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import PetCharacter from "./PetCharacter";
@@ -13,6 +13,10 @@ import NewsPanel from "@/components/news/NewsPanel";
 import StudyPanel from "@/components/study/StudyPanel";
 import type { Reminder } from "@/types/reminder";
 
+const PET_WINDOW_SIZE = { width: 160, height: 200 };
+const MENU_WINDOW_SIZE = { width: 320, height: 360 };
+const DRAG_THRESHOLD_PX = 8;
+
 export default function PetWindow() {
   const { mood, message, showMenu, setShowMenu, setMessage, setMood } =
     usePetStore();
@@ -22,32 +26,10 @@ export default function PetWindow() {
   const [showNews, setShowNews] = useState(false);
   const [showStudy, setShowStudy] = useState(false);
   const isDragging = useRef(false);
-  const mouseDownTime = useRef(0);
   const mouseDownPos = useRef({ x: 0, y: 0 });
-
-  const setClickThrough = useCallback(async (ignore: boolean) => {
-    try {
-      await getCurrentWindow().setIgnoreCursorEvents(ignore);
-    } catch {
-      // ignore if not supported
-    }
-  }, []);
 
   useEffect(() => {
     document.body.classList.add("pet-window");
-
-    // Start click-through so transparent areas pass clicks to desktop
-    setClickThrough(true);
-
-    // Fix positioning: transparent frameless windows may start at (0,0)
-    getCurrentWindow()
-      .outerPosition()
-      .then((pos) => {
-        if (pos.x === 0 && pos.y === 0) {
-          getCurrentWindow().setPosition(new PhysicalPosition(1200, 600));
-        }
-      })
-      .catch(() => {});
 
     // Load initial greeting
     invoke<{ mood: string; message: string }>("get_pet_greeting").then(
@@ -80,51 +62,64 @@ export default function PetWindow() {
     };
   }, []);
 
-  // CRITICAL: Use document-level mouseenter/mouseleave.
-  // These fire at the OS level even when setIgnoreCursorEvents(true).
-  // When mouse enters the window bounds, disable click-through so pet is interactive.
-  useEffect(() => {
-    const handleMouseEnter = () => {
-      setClickThrough(false);
-    };
+  const setPetWindowSize = async (size: typeof PET_WINDOW_SIZE) => {
+    try {
+      await getCurrentWindow().setSize(new PhysicalSize(size.width, size.height));
+    } catch {
+      // keep current size if the platform denies resize
+    }
+  };
 
-    const handleMouseLeave = () => {
-      if (!isDragging.current) {
-        setClickThrough(true);
-      }
-    };
+  const closeMenu = () => {
+    setShowMenu(false);
+    setPetWindowSize(PET_WINDOW_SIZE);
+  };
 
-    document.addEventListener("mouseenter", handleMouseEnter);
-    document.addEventListener("mouseleave", handleMouseLeave);
-
-    return () => {
-      document.removeEventListener("mouseenter", handleMouseEnter);
-      document.removeEventListener("mouseleave", handleMouseLeave);
-    };
-  }, [setClickThrough]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
+    e.preventDefault();
+
+    const win = getCurrentWindow();
+    let startWindowPos: PhysicalPosition;
+    try {
+      startWindowPos = await win.outerPosition();
+    } catch {
+      return;
+    }
+
     isDragging.current = false;
-    mouseDownTime.current = Date.now();
     mouseDownPos.current = { x: e.screenX, y: e.screenY };
+    let hasDragged = false;
 
     const handleMouseMove = (ev: MouseEvent) => {
-      const dx = Math.abs(ev.screenX - mouseDownPos.current.x);
-      const dy = Math.abs(ev.screenY - mouseDownPos.current.y);
-      if (dx > 3 || dy > 3) {
-        isDragging.current = true;
-        // Use Tauri's native drag - much more reliable than manual position tracking
-        getCurrentWindow().startDragging().catch(() => {});
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
+      const dx = ev.screenX - mouseDownPos.current.x;
+      const dy = ev.screenY - mouseDownPos.current.y;
+
+      if (
+        !hasDragged &&
+        Math.abs(dx) <= DRAG_THRESHOLD_PX &&
+        Math.abs(dy) <= DRAG_THRESHOLD_PX
+      ) {
+        return;
       }
+
+      hasDragged = true;
+      isDragging.current = true;
+      win
+        .setPosition(new PhysicalPosition(startWindowPos.x + dx, startWindowPos.y + dy))
+        .catch(() => {});
     };
 
     const handleMouseUp = () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
+      if (hasDragged) {
+        isDragging.current = true;
+        window.setTimeout(() => {
+          isDragging.current = false;
+        }, 0);
+      }
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -155,11 +150,19 @@ export default function PetWindow() {
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowMenu(!showMenu);
+    if (showMenu) {
+      closeMenu();
+      return;
+    }
+
+    setShowNews(false);
+    setShowStudy(false);
+    setShowMenu(true);
+    setPetWindowSize(MENU_WINDOW_SIZE);
   };
 
   const handleMenuAction = (action: string) => {
-    setShowMenu(false);
+    closeMenu();
     setShowNews(false);
     setShowStudy(false);
     if (action === "reminder") {
@@ -175,7 +178,13 @@ export default function PetWindow() {
   };
 
   return (
-    <div className="relative select-none" style={{ width: 160, height: 200 }}>
+    <div
+      className="relative select-none"
+      style={{
+        width: showMenu ? MENU_WINDOW_SIZE.width : PET_WINDOW_SIZE.width,
+        height: showMenu ? MENU_WINDOW_SIZE.height : PET_WINDOW_SIZE.height,
+      }}
+    >
       {/* Chat bubble */}
       {message && !showReminderInput && !activeReminder && (
         <div className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full z-10 w-64">
@@ -227,7 +236,7 @@ export default function PetWindow() {
         </div>
       )}
 
-      {/* Pet character - document-level mouseenter/mouseleave handles click-through toggle */}
+      {/* Pet character */}
       <div
         className="cursor-pointer"
         onMouseDown={handleMouseDown}
@@ -242,10 +251,10 @@ export default function PetWindow() {
       {/* Context menu */}
       {showMenu && (
         <div
-          className="absolute top-0 right-0 translate-x-full z-20"
+          className="absolute left-[150px] top-2 z-20"
           onClick={(e) => e.stopPropagation()}
         >
-          <PetMenu onClose={() => setShowMenu(false)} onAction={handleMenuAction} />
+          <PetMenu onClose={closeMenu} onAction={handleMenuAction} />
         </div>
       )}
     </div>
