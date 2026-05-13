@@ -4,6 +4,8 @@ import PetWindow from "@/components/pet/PetWindow";
 import ClipboardPanel from "@/components/clipboard/ClipboardPanel";
 import StickySidebar from "@/components/sticky/StickySidebar";
 import SettingsWindow from "@/components/settings/SettingsWindow";
+import NewsPanel from "@/components/news/NewsPanel";
+import StudyPanel from "@/components/study/StudyPanel";
 
 function App() {
   const [windowLabel, setWindowLabel] = useState<string>("");
@@ -26,6 +28,18 @@ function App() {
       return <StickySidebar />;
     case "settings":
       return <SettingsWindow />;
+    case "news":
+      return (
+        <div className="h-full flex items-center justify-center">
+          <NewsPanel />
+        </div>
+      );
+    case "study":
+      return (
+        <div className="h-full flex items-center justify-center">
+          <StudyPanel />
+        </div>
+      );
     case "main":
     default:
       return <PetWindow />;

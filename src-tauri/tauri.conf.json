@@ -51,6 +51,30 @@
         "y": 200
       },
       {
+        "label": "news",
+        "title": "News - JJtool",
+        "width": 360,
+        "height": 540,
+        "transparent": true,
+        "decorations": false,
+        "visible": false,
+        "resizable": false,
+        "skipTaskbar": true,
+        "center": true
+      },
+      {
+        "label": "study",
+        "title": "Study - JJtool",
+        "width": 360,
+        "height": 540,
+        "transparent": true,
+        "decorations": false,
+        "visible": false,
+        "resizable": false,
+        "skipTaskbar": true,
+        "center": true
+      },
+      {
         "label": "settings",
         "title": "Settings - JJtool",
         "width": 600,

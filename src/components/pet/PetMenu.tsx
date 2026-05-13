@@ -18,6 +18,24 @@ const menuItems = [
 ];
 
 export default function PetMenu({ onClose, onAction }: Props) {
+  const toggleWindow = async (label: string) => {
+    try {
+      const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+      const existing = await WebviewWindow.getByLabel(label);
+      if (!existing) return;
+
+      const visible = await existing.isVisible();
+      if (visible) {
+        await existing.hide();
+      } else {
+        await existing.show();
+        await existing.setFocus();
+      }
+    } catch (e) {
+      console.error(`Failed to toggle ${label} window:`, e);
+    }
+  };
+
   const handleAction = async (id: string) => {
     onClose();
 
@@ -26,39 +44,19 @@ export default function PetMenu({ onClose, onAction }: Props) {
 
     switch (id) {
       case "clipboard": {
-        try {
-          const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-          const existing = await WebviewWindow.getByLabel("clipboard");
-          if (existing) {
-            const visible = await existing.isVisible();
-            if (visible) {
-              await existing.hide();
-            } else {
-              await existing.show();
-              await existing.setFocus();
-            }
-          }
-        } catch (e) {
-          console.error("Failed to toggle clipboard window:", e);
-        }
+        await toggleWindow("clipboard");
         break;
       }
       case "sticky": {
-        try {
-          const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-          const existing = await WebviewWindow.getByLabel("sticky");
-          if (existing) {
-            const visible = await existing.isVisible();
-            if (visible) {
-              await existing.hide();
-            } else {
-              await existing.show();
-              await existing.setFocus();
-            }
-          }
-        } catch (e) {
-          console.error("Failed to toggle sticky window:", e);
-        }
+        await toggleWindow("sticky");
+        break;
+      }
+      case "news": {
+        await toggleWindow("news");
+        break;
+      }
+      case "study": {
+        await toggleWindow("study");
         break;
       }
       case "settings": {
