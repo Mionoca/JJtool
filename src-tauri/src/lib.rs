@@ -35,7 +35,7 @@ pub fn run() {
             services::start_health_monitor(app_handle_health, db.clone());
 
             // Store database in app state
-            app.manage(db);
+            app.manage(db.clone());
 
             // Setup system tray menu
             let show_item = MenuItem::with_id(app, "show", "显示桌宠", true, None::<&str>)?;
@@ -111,6 +111,15 @@ pub fn run() {
                 }
             });
 
+            // Fetch news on startup (background)
+            let db_news = db.clone();
+            std::thread::spawn(move || {
+                match services::news_fetcher::fetch_news(&db_news) {
+                    Ok(count) => println!("Fetched {} news articles", count),
+                    Err(e) => eprintln!("News fetch error: {}", e),
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -131,11 +140,23 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::set_setting,
             commands::settings::get_setting,
+            commands::settings::save_character_image,
+            commands::settings::get_character_images,
+            commands::settings::delete_character_image,
             commands::sticky::create_sticky_note,
             commands::sticky::get_sticky_notes,
             commands::sticky::update_sticky_note,
             commands::sticky::delete_sticky_note,
             commands::pet::get_pet_greeting,
+            commands::news::get_news_articles,
+            commands::news::mark_news_read,
+            commands::news::refresh_news,
+            commands::study::create_study_plan,
+            commands::study::get_study_plans,
+            commands::study::add_study_task,
+            commands::study::toggle_study_task,
+            commands::study::delete_study_task,
+            commands::study::delete_study_plan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running JJtool");

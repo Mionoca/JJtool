@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { PetMood } from "@/types/pet";
 
 interface Props {
@@ -21,18 +24,38 @@ const MOOD_COLOR: Record<PetMood, string> = {
 };
 
 export default function PetCharacter({ mood }: Props) {
+  const [characterImages, setCharacterImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    invoke<Record<string, string>>("get_character_images")
+      .then(setCharacterImages)
+      .catch(() => {});
+  }, []);
+
+  const hasCustomImage = characterImages[mood];
+
   return (
     <div className="flex flex-col items-center">
-      {/* Character body - placeholder with emoji face */}
+      {/* Character body */}
       <div
         className={`
-          w-24 h-24 rounded-full bg-gradient-to-br ${MOOD_COLOR[mood]}
+          w-24 h-24 rounded-full
           shadow-lg flex items-center justify-center
           transition-all duration-300 hover:scale-105
           border-2 border-white/40
+          ${hasCustomImage ? "bg-transparent overflow-hidden" : `bg-gradient-to-br ${MOOD_COLOR[mood]}`}
         `}
       >
-        <span className="text-3xl select-none">{MOOD_EMOJI[mood]}</span>
+        {hasCustomImage ? (
+          <img
+            src={convertFileSrc(characterImages[mood])}
+            alt={mood}
+            className="w-full h-full object-cover"
+            draggable={false}
+          />
+        ) : (
+          <span className="text-3xl select-none">{MOOD_EMOJI[mood]}</span>
+        )}
       </div>
 
       {/* Name tag */}

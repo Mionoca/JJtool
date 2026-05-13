@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default capabilities for JJtool",
-  "windows": ["main", "clipboard", "settings"],
+  "windows": ["main", "clipboard", "settings", "sticky"],
   "permissions": [
     "core:default",
     "core:window:default",
@@ -14,6 +14,7 @@
     "core:window:allow-set-position",
     "core:window:allow-set-size",
     "core:window:allow-start-dragging",
+    "core:window:allow-set-ignore-cursor-events",
     "core:window:allow-center",
     "core:window:allow-set-focus",
     "core:window:allow-inner-position",

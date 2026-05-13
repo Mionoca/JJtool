@@ -9,6 +9,8 @@ const menuItems = [
   { id: "clipboard", icon: "📋", label: "剪贴板历史" },
   { id: "reminder", icon: "⏰", label: "添加提醒" },
   { id: "sticky", icon: "📝", label: "便签" },
+  { id: "news", icon: "📰", label: "资讯动态" },
+  { id: "study", icon: "📚", label: "学习计划" },
   { id: "settings", icon: "⚙️", label: "设置" },
   { id: "separator", icon: "", label: "" },
   { id: "hide", icon: "👁️", label: "隐藏桌宠" },

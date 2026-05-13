@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import PetCharacter from "./PetCharacter";
@@ -9,6 +9,8 @@ import { usePetStore } from "@/stores/petStore";
 import ReminderInput from "@/components/reminder/ReminderInput";
 import ReminderPopup from "@/components/reminder/ReminderPopup";
 import { useReminderStore } from "@/stores/reminderStore";
+import NewsPanel from "@/components/news/NewsPanel";
+import StudyPanel from "@/components/study/StudyPanel";
 import type { Reminder } from "@/types/reminder";
 
 export default function PetWindow() {
@@ -17,11 +19,37 @@ export default function PetWindow() {
   const { activeReminder, setActiveReminder } = useReminderStore();
   const [bouncing, setBouncing] = useState(false);
   const [showReminderInput, setShowReminderInput] = useState(false);
-  const dragStartPos = useRef({ x: 0, y: 0 });
+  const [showNews, setShowNews] = useState(false);
+  const [showStudy, setShowStudy] = useState(false);
   const isDragging = useRef(false);
+  const dragStartScreen = useRef({ x: 0, y: 0 });
+  const windowStartPos = useRef({ x: 0, y: 0 });
+
+  // Make window click-through by default, only capture on pet hover
+  const setClickThrough = useCallback(async (ignore: boolean) => {
+    try {
+      await getCurrentWindow().setIgnoreCursorEvents(ignore);
+    } catch {
+      // ignore if not supported
+    }
+  }, []);
 
   useEffect(() => {
     document.body.classList.add("pet-window");
+
+    // Make window click-through on mount
+    setClickThrough(true);
+
+    // Ensure window is positioned correctly (fix for transparent windows)
+    getCurrentWindow()
+      .outerPosition()
+      .then((pos) => {
+        // If at (0,0), move to configured position
+        if (pos.x === 0 && pos.y === 0) {
+          getCurrentWindow().setPosition(new PhysicalPosition(1200, 600));
+        }
+      })
+      .catch(() => {});
 
     // Load initial greeting
     invoke<{ mood: string; message: string }>("get_pet_greeting").then(
@@ -54,24 +82,54 @@ export default function PetWindow() {
     };
   }, []);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePetMouseEnter = () => {
+    // When hovering over pet, capture clicks so we can interact
+    setClickThrough(false);
+  };
+
+  const handlePetMouseLeave = () => {
+    // When leaving pet area, make click-through again
+    if (!isDragging.current) {
+      setClickThrough(true);
+    }
+  };
+
+  const handleMouseDown = async (e: React.MouseEvent) => {
     if (e.button === 0) {
-      dragStartPos.current = { x: e.clientX, y: e.clientY };
       isDragging.current = false;
+      dragStartScreen.current = { x: e.screenX, y: e.screenY };
+
+      try {
+        const pos = await getCurrentWindow().outerPosition();
+        windowStartPos.current = { x: pos.x, y: pos.y };
+      } catch {
+        return;
+      }
 
       const handleMouseMove = (ev: MouseEvent) => {
-        const dx = Math.abs(ev.clientX - dragStartPos.current.x);
-        const dy = Math.abs(ev.clientY - dragStartPos.current.y);
+        const dx = Math.abs(ev.screenX - dragStartScreen.current.x);
+        const dy = Math.abs(ev.screenY - dragStartScreen.current.y);
         if (dx > 3 || dy > 3) {
           isDragging.current = true;
-          getCurrentWindow().startDragging().catch(() => {});
-          document.removeEventListener("mousemove", handleMouseMove);
+        }
+        if (isDragging.current) {
+          const newX =
+            windowStartPos.current.x + (ev.screenX - dragStartScreen.current.x);
+          const newY =
+            windowStartPos.current.y + (ev.screenY - dragStartScreen.current.y);
+          getCurrentWindow()
+            .setPosition(new PhysicalPosition(newX, newY))
+            .catch(() => {});
         }
       };
 
       const handleMouseUp = () => {
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
+        if (!isDragging.current) {
+          // Re-enable click-through after a short delay
+          setTimeout(() => setClickThrough(true), 100);
+        }
       };
 
       document.addEventListener("mousemove", handleMouseMove);
@@ -80,7 +138,11 @@ export default function PetWindow() {
   };
 
   const handleClick = () => {
-    if (isDragging.current) return;
+    if (isDragging.current) {
+      isDragging.current = false;
+      setClickThrough(true);
+      return;
+    }
 
     setBouncing(true);
     setTimeout(() => setBouncing(false), 400);
@@ -104,8 +166,16 @@ export default function PetWindow() {
 
   const handleMenuAction = (action: string) => {
     setShowMenu(false);
+    setShowNews(false);
+    setShowStudy(false);
     if (action === "reminder") {
       setShowReminderInput(true);
+      setMessage("");
+    } else if (action === "news") {
+      setShowNews(true);
+      setMessage("");
+    } else if (action === "study") {
+      setShowStudy(true);
       setMessage("");
     }
   };
@@ -133,9 +203,41 @@ export default function PetWindow() {
         </div>
       )}
 
-      {/* Pet character */}
+      {/* News panel popup */}
+      {showNews && (
+        <div className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full z-30">
+          <div className="relative">
+            <button
+              onClick={() => setShowNews(false)}
+              className="absolute -top-1 -right-1 z-40 w-5 h-5 rounded-full bg-red-400 text-white text-xs flex items-center justify-center hover:bg-red-500"
+            >
+              ×
+            </button>
+            <NewsPanel />
+          </div>
+        </div>
+      )}
+
+      {/* Study panel popup */}
+      {showStudy && (
+        <div className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full z-30">
+          <div className="relative">
+            <button
+              onClick={() => setShowStudy(false)}
+              className="absolute -top-1 -right-1 z-40 w-5 h-5 rounded-full bg-red-400 text-white text-xs flex items-center justify-center hover:bg-red-500"
+            >
+              ×
+            </button>
+            <StudyPanel />
+          </div>
+        </div>
+      )}
+
+      {/* Pet character - only this area captures mouse events */}
       <div
         className="cursor-pointer"
+        onMouseEnter={handlePetMouseEnter}
+        onMouseLeave={handlePetMouseLeave}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
         onContextMenu={handleContextMenu}

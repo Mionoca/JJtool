@@ -23,6 +23,8 @@ tokio = { version = "1", features = ["full"] }
 uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
 regex = "1"
+reqwest = { version = "0.12", features = ["blocking"] }
+quick-xml = "0.37"
 
 [dependencies.windows]
 version = "0.61"

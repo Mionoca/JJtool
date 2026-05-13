@@ -38,6 +38,38 @@ pub fn run_migrations(conn: &Connection) -> Result<(), String> {
             key   TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS news_articles (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            title       TEXT NOT NULL,
+            summary     TEXT,
+            url         TEXT NOT NULL UNIQUE,
+            source      TEXT,
+            category    TEXT,
+            fetched_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+            is_read     INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_news_fetched ON news_articles(fetched_at DESC);
+
+        CREATE TABLE IF NOT EXISTS study_plans (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            title        TEXT NOT NULL,
+            description  TEXT,
+            plan_date    TEXT NOT NULL,
+            plan_type    TEXT NOT NULL DEFAULT 'daily',
+            is_completed INTEGER NOT NULL DEFAULT 0,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+        );
+
+        CREATE TABLE IF NOT EXISTS study_tasks (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_id      INTEGER NOT NULL REFERENCES study_plans(id) ON DELETE CASCADE,
+            title        TEXT NOT NULL,
+            duration_min INTEGER,
+            is_done      INTEGER NOT NULL DEFAULT 0,
+            sort_order   INTEGER NOT NULL DEFAULT 0
+        );
         ",
     )
     .map_err(|e| format!("Migration execution failed: {}", e))?;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import CharacterPicker from "./CharacterPicker";
 
 export default function SettingsWindow() {
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -69,6 +70,16 @@ export default function SettingsWindow() {
                 {settings.clipboard_hotkey || "Ctrl+Shift+V"}
               </span>
             </SettingRow>
+          </div>
+        </section>
+
+        {/* Character section */}
+        <section>
+          <h2 className="text-sm font-semibold text-fluent-text mb-3">
+            桌宠形象
+          </h2>
+          <div className="bg-white rounded-fluent p-4 border border-gray-100">
+            <CharacterPicker />
           </div>
         </section>
 
